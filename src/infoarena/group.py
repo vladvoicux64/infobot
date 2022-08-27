@@ -5,10 +5,10 @@ from discord import app_commands
 from infoarena import infoarena
 from util import dsutil
 
-pb=json.load(open('infoarena/_pb.json'))
+pb=json.load(open('../gen/output/infoarena.json'))
 
 async def problema_autocomplete(interaction: discord.Interaction, current: str):
-  auto = (app_commands.Choice(name=f'{v} ({k})', value=k) for k,v in pb.items() if current.lower() in f'{v.lower()} ({k})')
+  auto = [app_commands.Choice(name=f'{v} ({k.split("$")[1]})', value=k) for k,v in pb.items() if current.lower() in f'{k.split("$")[0]} {v.lower()} ({k.split("$")[1]})']
   return list(itertools.islice(auto, 10)) # autocomplete up to 10 items
 
 class InfoarenaGroup(app_commands.Group):
@@ -21,7 +21,9 @@ class InfoarenaGroup(app_commands.Group):
   async def problema(self, interaction: discord.Interaction, nume: str):
     await interaction.response.defer()
     
-    data = await infoarena.get_problem(nume)
+    archive = nume.split('$')[0]
+    name = nume.split('$')[1]
+    data = await infoarena.get_problem(name, archive)
     if data['error']:
       if data['error'] == 302:
         embed = dsutil.create_error_embed('Problema nu există.')
@@ -30,9 +32,9 @@ class InfoarenaGroup(app_commands.Group):
       await interaction.edit_original_response(embed=embed)
       return
     
-    embed = dsutil.create_problem_embed(f'Problema {pb[nume]} ({nume})', data)
+    embed = dsutil.create_problem_embed(f'Problema {pb[nume]} ({name})', data)
 
     # Link to problem button
-    btn = discord.ui.Button(style=discord.ButtonStyle.link, url=f'https://www.infoarena.ro/problema/{nume}', label='Problema')
+    btn = discord.ui.Button(style=discord.ButtonStyle.link, url=f'https://www.{"varena" if archive == "varena" else "infoarena"}.ro/problema/{name}', label='Problema')
     view = discord.ui.View().add_item(btn)
     await interaction.edit_original_response(embed=embed, view=view)

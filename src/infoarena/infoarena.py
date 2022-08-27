@@ -3,13 +3,18 @@ from bs4 import BeautifulSoup
 import re
 import util.util as util
 
-async def get_problem(name: str):
+BASE = 'https://www.infoarena.ro'
+VARENA_BASE = 'https://www.varena.ro'
+
+async def get_problem(name: str, archive: str):
   """Return data about an infoarena problem.
   
   name -- the problem's name
+  archive -- the archive to which the problem belongs
   """
 
-  URL = f'https://www.infoarena.ro/problema/{name}'
+  base = VARENA_BASE if archive == 'varena' else BASE
+  URL = f'{base}/problema/{name}'
   
   async with aiohttp.ClientSession() as session:
     async with session.get(URL) as page:
@@ -21,7 +26,17 @@ async def get_problem(name: str):
 
       util.prettifySoup(soup, 'main')
 
-      data['categories'] = '*Arhiva de probleme*'
+      # Didn't use a match statement because it is only supported in Python 3.10+
+      if archive == 'pb':
+        data['categories'] = '*Arhiva de probleme*'
+      elif archive == 'edu':
+        data['categories'] = '*Arhiva educațională*'
+      elif archive == 'monthly':
+        data['categories'] = '*Arhiva monthly*'
+      elif archive == 'acm':
+        data['categories'] = '*Arhiva ACM*'
+      elif archive == 'varena':
+        data['categories'] = '*Arhiva de probleme varena'
 
       name_header = soup.find('h1').find_next('h1')
       if name_header:
@@ -30,7 +45,7 @@ async def get_problem(name: str):
       author = soup.find('span', class_='tiny-user')
       if author:
         author_username = soup.find('span', class_='username').get_text()
-        data['author'] = (f'{author.find("a").get_text()} ({author_username})', f'https://www.infoarena.ro{author.find("img")["src"]}')
+        data['author'] = (f'{author.find("a").get_text()} ({author_username})', base+author.find('img')['src'])
 
       task_header = soup.find('h2', text=re.compile('Cerin.a'))
       if task_header:
